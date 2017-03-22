@@ -91,4 +91,4 @@ python mnist.py
 ```
 
 ## Using a Preprocessor with an Estimator.
-A complete example including training, evaluation and predictions using the MNIST `CorruptingPreprocessor` (`example.corrupt`) with a custom `tf.contrib.learn.Estimator` can be seen [here]().
+A complete example including training, evaluation and predictions using the MNIST `CorruptingPreprocessor` (`example.corrupt`) with a custom `tf.contrib.learn.Estimator` can be seen [here](https://github.com/jackd/mnist_estimator).

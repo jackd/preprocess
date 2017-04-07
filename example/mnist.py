@@ -13,7 +13,8 @@ from tensorflow.examples.tutorials.mnist import input_data
 from preprocess import Preprocessor
 
 _mnist = input_data.read_data_sets(
-    os.path.join(os.path.dirname(__file__), 'MNIST_data/'), one_hot=False)
+    os.path.join(os.path.realpath(os.path.dirname(__file__)), 'MNIST_data'),
+    one_hot=False)
 
 
 class MnistDataset(object):
@@ -62,14 +63,12 @@ def _get_dataset(dataset):
 class MnistPreprocessor(Preprocessor):
     """Preprocessor implementation for Mnist data."""
 
-    def __init__(self, dataset, include_indices=False):
+    def __init__(self, dataset):
         """
         Initialize with Mnist dataset.
 
         Inputs:
             dataset: mnist dataset, with images and labels property
-            include_indices: whether or not to include example indices.
-                See inputs for details.
 
         Raises:
             ValueError: if len(dataset.images) != len(dataset.labels)
@@ -79,7 +78,6 @@ class MnistPreprocessor(Preprocessor):
         self._labels = d.labels
         if len(self._images) != len(self._labels):
             raise ValueError('images and labels must be the same length.')
-        self._include_indices = include_indices
 
     def inputs(self):
         """
@@ -92,12 +90,7 @@ class MnistPreprocessor(Preprocessor):
             self._images, dtype=tf.float32, name='images')
         labels = ops.convert_to_tensor(
             self._labels, dtype=tf.int32, name='labels')
-        if self._include_indices:
-            indices = ops.convert_to_tensor(
-                range(len(self._labels)), dtype=tf.int32, name='indices')
-            return indices, images, labels
-        else:
-            return images, labels
+        return images, labels
 
     def preprocess_single_image(self, image):
         """Preprocessing function for a single image. Defaults to identity."""
@@ -112,8 +105,7 @@ class MnistPreprocessor(Preprocessor):
         else just returns
             image, label
         """
-        s = 1 if self._include_indices else 0
-        single_inputs[s] = self.preprocess_single_image(single_inputs[s])
+        single_inputs[0] = self.preprocess_single_image(single_inputs[0])
         return single_inputs
 
 

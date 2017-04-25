@@ -149,15 +149,18 @@ class Preprocessor(object):
         return single_inputs
 
     def batch_inputs(
-            self, single_inputs, batch_size, num_threads=1):
+            self, single_inputs, batch_size, num_threads=1,
+            allow_smaller_final_batch=False):
         """See `tf.train.batch`."""
         if isinstance(single_inputs, tf.Tensor):
             single_inputs = [single_inputs]
         return tf.train.batch(
-            single_inputs, batch_size=batch_size, num_threads=num_threads)
+            single_inputs, batch_size=batch_size, num_threads=num_threads,
+            allow_smaller_final_batch=allow_smaller_final_batch)
 
     def get_preprocessed_batch(
-            self, batch_size, num_epochs=None, shuffle=False, num_threads=8):
+            self, batch_size, num_epochs=None, shuffle=False, num_threads=8,
+            allow_smaller_final_batch=False):
         """
         Convenience function.
 
@@ -172,7 +175,8 @@ class Preprocessor(object):
             inputs, num_epochs=num_epochs, shuffle=shuffle)
         single_inputs = self.preprocess_single_inputs(single_inputs)
         batch = self.batch_inputs(
-            single_inputs, batch_size=batch_size, num_threads=num_threads)
+            single_inputs, batch_size=batch_size, num_threads=num_threads,
+            allow_smaller_final_batch=allow_smaller_final_batch)
         return batch
 
 

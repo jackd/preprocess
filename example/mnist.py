@@ -55,7 +55,7 @@ def _get_dataset(dataset):
     else:
         raise ValueError(
             'dataset must be one of '
-            '[MnistDataset.Train, MnistDataset.VALIDATION, '
+            '[MnistDataset.TRAIN, MnistDataset.VALIDATION, '
             'MnistDataset.TEST], got %s' % dataset)
     return d
 

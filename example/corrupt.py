@@ -6,35 +6,32 @@ from preprocess.example.mnist import MnistPreprocessor
 class CorruptingPreprocessor(MnistPreprocessor):
     """MnistPreprocessor that drops pixels at random."""
 
-    def __init__(self, dataset, include_indices=False, drop_prop=0.5):
+    def __init__(self, dataset, drop_prob=0.5):
         """
         Initialize with images and labels from a dataset and drop prop.
 
         Inputs:
             dataset: mnist dataset, with images and labels property
-            include_indices: whether or not to include example indices. See
-                `inputs` / `preprocess_single_inputs` for details.
-            drop_prop: probability of setting each pixel to one.
+            drop_prob: probability of setting each pixel to one.
 
         Raises:
             ValueError is noise_prop not in [0, 1].
         """
-        if drop_prop < 0 or drop_prop > 1:
-            raise ValueError('noise_prop must be in range [0, 1]')
-        self._drop_prop = drop_prop
-        super(CorruptingPreprocessor, self).__init__(
-            dataset, include_indices=include_indices)
+        if drop_prob < 0 or drop_prob > 1:
+            raise ValueError('noise_prob must be in range [0, 1]')
+        self._drop_prob = drop_prob
+        super(CorruptingPreprocessor, self).__init__(dataset)
 
     def preprocess_single_image(self, image):
         """
-        Randomly sets pixel values to zero based on drop_prop.
+        Randomly sets pixel values to zero based on `drop_prob`.
 
-        `drop_prop` set in constructor.
+        `drop_prob` set in constructor.
         """
-        if self._drop_prop > 0:
+        if self._drop_prob > 0:
             drop = tf.to_float(tf.greater(
                 tf.random_uniform(shape=image.shape, dtype=tf.float32),
-                self._drop_prop, name='dropped'))
+                self._drop_prob, name='dropped'))
             image = image * drop
         return image
 
@@ -54,10 +51,10 @@ if __name__ == '__main__':
             plt.show()
 
     vis_preprocessor(
-        CorruptingPreprocessor('train', False, 0.5),
+        CorruptingPreprocessor('train', 0.5),
         'training dropped (0.5)',
         shuffle=True)
     vis_preprocessor(
-        CorruptingPreprocessor('validation', False, 0.0),
+        CorruptingPreprocessor('validation', 0.0),
         'validation dropped (0.0)',
         shuffle=False)

@@ -2,3 +2,4 @@
 **/model
 example/saved_images
 **/MNIST_data
+**/__pycache__

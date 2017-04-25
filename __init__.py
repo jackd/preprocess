@@ -1,1 +1,1 @@
-from preprocessor import Preprocessor, get_batch_data
+from .preprocessor import Preprocessor, get_batch_data

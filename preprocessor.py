@@ -117,8 +117,15 @@ class Preprocessor(object):
                 x, num_epochs=num_epochs, shuffle=shuffle)
         if isinstance(inputs, tf.Tensor):
             return f([inputs])[0]
-        else:
+        elif isinstance(inputs, dict):
+            keys = [k for k in inputs]
+            values = [inputs[k] for k in keys]
+            values = f(values)
+            return {k: v for (k, v) in zip(keys, values)}
+        elif isinstance(inputs, (list, tuple)):
             return f(inputs)
+        else:
+            raise TypeError('inputs must be a tf.tensor, dict, list or tuple')
 
     def preprocess_single_inputs(self, single_inputs):
         """

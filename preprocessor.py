@@ -11,7 +11,6 @@ class Preprocessor(object):
 
     Derived classes may implement:
         preprocess_single_inputs(self, single_inputs)
-        preprocess_batch_inputs(self, batch_inputs)
 
     (default implementation is identity)
 
@@ -22,26 +21,26 @@ class Preprocessor(object):
         batch (batch_inputs)
 
     Example usage:
-    Using `tf.contrib.learn.Estimator`:
+    Using `tf.estimator.Estimator`:
     ```
     estimator = get_estimator()
     processor = DerivedPreprocessor()
     batch_size = 128
     max_steps = 10000
 
-    def fit_input_fn():
+    def train_input_fn():
         feature0, feature1, labels = preprocessor.get_preprocessed_batch(
             batch_size=batch_size, num_threads=8, shuffle=True)
         return (feature0, feature1), labels
 
-    esimator.fit(input_fn=fit_input_fn, max_steps=max_steps)
+    esimator.train(input_fn=input_fn, max_steps=max_steps)
 
     def evaluate_input_fn():
         feature0, feature1, labels = preprocessor.get_preprocessed_batch(
             batch_size=batch_size, num_epochs=1, num_threds=8, shuffle=False)
         return (feature0, feature1), labels
 
-    estimator.evaluate(input_fn=input_fn)
+    estimator.evaluate(input_fn=eval_input_fn)
     ```
 
     Without `tf.contrib.learn.Estimator`s:
@@ -95,6 +94,7 @@ class Preprocessor(object):
             images_str, dtype=tf.string, name='image_paths')
         return image_paths_tf, labels_tf
         ```
+
         """
         raise NotImplementedError()
 
@@ -111,6 +111,7 @@ class Preprocessor(object):
         Returns:
             list of tensors representing a single example, or a single tensor
                 if inputs is a single tensor.
+
         """
         def f(x):
             return tf.train.slice_input_producer(
@@ -152,6 +153,7 @@ class Preprocessor(object):
             image = some_tf_preprocessing_func(image)
             return image, label
             ```
+
         """
         return single_inputs
 
@@ -169,13 +171,14 @@ class Preprocessor(object):
             self, batch_size, num_epochs=None, shuffle=False, num_threads=8,
             allow_smaller_final_batch=False):
         """
-        Convenience function.
+        Combine standard preprocessing pipeline steps.
 
         Wraps:
             inputs,
             single_inputs,
             preprocessed_single_inputs,
             batch_inputs
+
         """
         inputs = self.inputs()
         single_inputs = self.single_inputs(
@@ -203,6 +206,7 @@ def get_batch_data(preprocessor, batch_size=4, shuffle=False, num_threads=4,
 
     Returns:
         data associated with a preprocessed batch from the preprocessor.
+
     """
     def _build_graph():
         print('Building graph...')

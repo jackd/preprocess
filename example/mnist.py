@@ -72,6 +72,7 @@ class MnistPreprocessor(Preprocessor):
 
         Raises:
             ValueError: if len(dataset.images) != len(dataset.labels)
+
         """
         d = _get_dataset(dataset)
         self._images = np.reshape(d.images, (-1, 28, 28))

@@ -226,7 +226,7 @@ def get_batch_data(preprocessor, batch_size=4, shuffle=False, num_threads=4,
         threads = tf.train.start_queue_runners(coord=coord)
         try:
             batch_data = sess.run(batch)
-        except:
+        except Exception:
             coord.request_stop()
             coord.join(threads)
             raise

@@ -214,6 +214,36 @@ class Preprocessor(object):
         return self.__str__()
 
 
+class MappedPreprocessor(Preprocessor):
+    """A class representing the per-example mapping of a preprocessor."""
+
+    def __init__(self, base_preprocessor, map_fn):
+        if (map_fn is None):
+            raise ValueError('map_fn cannot be None')
+        self._base = base_preprocessor
+        self._map_fn = map_fn
+
+    def inputs(self):
+        """Redirect to base preprocessor."""
+        return self._base.inputs()
+
+    def preprocess_single_inputs(self, *args, **kwargs):
+        """
+        Preprocessing function operating on individual example tensors.
+
+        Applies the map_fn supplied in the constructor to the output of the
+        base preprocessor's preprocess_single_inputs function.
+        """
+        return self._map_fn(
+            self._base.preprocess_single_inputs(*args, **kwargs))
+
+    def __str__(self):
+        return 'Mapped:%s' % self._base
+
+    def __repr__(self):
+        return self.__str__()
+
+
 def get_batch_data(preprocessor, batch_size=4, shuffle=False, num_threads=4,
                    use_cpu=True):
     """
@@ -261,33 +291,3 @@ def get_batch_data(preprocessor, batch_size=4, shuffle=False, num_threads=4,
         coord.request_stop()
         coord.join(threads)
     return batch_data
-
-
-class MappedPreprocessor(Preprocessor):
-    """A class representing the per-example mapping of a preprocessor."""
-
-    def __init__(self, base_preprocessor, map_fn):
-        if (map_fn is None):
-            raise ValueError('map_fn cannot be None')
-        self._base = base_preprocessor
-        self._map_fn = map_fn
-
-    def inputs(self):
-        """Redirect to base preprocessor."""
-        return self._base.inputs()
-
-    def preprocess_single_inputs(self, *args, **kwargs):
-        """
-        Preprocessing function operating on individual example tensors.
-
-        Applies the map_fn supplied in the constructor to the output of the
-        base preprocessor's preprocess_single_inputs function.
-        """
-        return self._map_fn(
-            self._base.preprocess_single_inputs(*args, **kwargs))
-
-    def __str__(self):
-        return 'Mapped:%s' % self._base
-
-    def __repr__(self):
-        return self.__str__()

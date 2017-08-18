@@ -39,7 +39,7 @@ class Preprocessor(object):
             batch_size=batch_size, num_epochs=1, num_threds=8, shuffle=False)
         return (feature0, feature1), labels
 
-    estimator.evaluate(input_fn=input_fn)
+    estimator.evaluate(input_fn=eval_input_fn)
     ```
 
     Without `tf.estimator.Estimator`s:
@@ -93,6 +93,7 @@ class Preprocessor(object):
             images_str, dtype=tf.string, name='image_paths')
         return image_paths_tf, labels_tf
         ```
+
         """
         self._inputs_fn = inputs_fn
 
@@ -117,6 +118,7 @@ class Preprocessor(object):
         Returns:
             list of tensors representing a single example, or a single tensor
                 if inputs is a single tensor.
+
         """
         def f(x):
             return tf.train.slice_input_producer(
@@ -133,6 +135,35 @@ class Preprocessor(object):
         else:
             raise TypeError('inputs must be a tf.tensor, dict, list or tuple')
 
+    def preprocess_single_inputs(self, single_inputs):
+        """
+        Preprocessing funcion applied to single examples.
+
+        Can be overriden or changed via `map`. Defaults to identity.
+
+        Args:
+            single_inputs: list/tuple of inputs representing a single example.
+        Returns:
+            list/tuple of processed tensors representing a single example.
+
+        Example usage:
+            Given single_inputs (image_names, labels), where:
+                image_name: tf.string tensor of image jpg names corresponding
+                    to jpg files in `image_folder/image_name`
+                label: tf.uint8 tensor of labels
+            ```
+            image_name, label = single_inputs
+            image_folder = tf.constant(
+                'image_folder/', dtype=tf.string, name='image_folder')
+            image_data = tf.read(image_folder + image_name, name='image_data')
+            image = tf.image.decode_jpeg(image_data, channels=3)
+            image = some_tf_preprocessing_func(image)
+            return image, label
+            ```
+
+        """
+        return single_inputs
+
     def batch_inputs(
             self, single_inputs, batch_size, num_threads=1,
             allow_smaller_final_batch=False):
@@ -143,26 +174,18 @@ class Preprocessor(object):
             single_inputs, batch_size=batch_size, num_threads=num_threads,
             allow_smaller_final_batch=allow_smaller_final_batch)
 
-    def preprocess_single_inputs(self, single_inputs):
-        """
-        Apply optional preprocessing to a single example case.
-
-        Default implementation does nothing, though allows for each overriding.
-        Alternatively, use `map` function.
-        """
-        return single_inputs
-
     def get_preprocessed_batch(
             self, batch_size, num_epochs=None, shuffle=False, num_threads=8,
             allow_smaller_final_batch=False):
         """
-        Convenience function.
+        Combine standard preprocessing pipeline steps.
 
         Wraps:
             inputs,
             single_inputs,
             preprocess_single_inputs,
             batch_inputs
+
         """
         inputs = self.inputs()
         single_inputs = self.single_inputs(
@@ -207,6 +230,7 @@ def get_batch_data(preprocessor, batch_size=4, shuffle=False, num_threads=4,
 
     Returns:
         data associated with a preprocessed batch from the preprocessor.
+
     """
     def _build_graph():
         print('Building graph...')

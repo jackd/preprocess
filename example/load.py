@@ -38,28 +38,19 @@ def generate_images(n=10):
             Image.fromarray(data).save(path)
 
 
-class LoadingPreprocessor(Preprocessor):
-    """
-    Preprocessor implementation that loads data from file.
+def inputs_fn():
+    filenames = list(os.listdir(images_dir))
+    filenames = ops.convert_to_tensor(
+        filenames, dtype=tf.string, name='filenames')
+    return filenames
 
-    Each example's data is in it's own seperate file.
-    """
 
-    def inputs(self):
-        """Get a tensor representing all image filenames."""
-        filenames = list(os.listdir(images_dir))
-        filenames = ops.convert_to_tensor(
-            filenames, dtype=tf.string, name='filenames')
-        return filenames
-
-    def preprocess_single_inputs(self, single_inputs):
-        """Convert filenames into images."""
-        filename = single_inputs
-        path = ('%s/' % images_dir) + filename
-        image_data = tf.read_file(path, name='image_data')
-        image = tf.image.decode_jpeg(image_data, channels=3, name='image')
-        image.set_shape((128, 128, 3))
-        return image
+def map_fn(filename):
+    path = ('%s/' % images_dir) + filename
+    image_data = tf.read_file(path, name='image_data')
+    image = tf.image.decode_jpeg(image_data, channels=3, name='image')
+    image.set_shape((128, 128, 3))
+    return image
 
 
 if __name__ == '__main__':
@@ -67,7 +58,7 @@ if __name__ == '__main__':
     import matplotlib.pyplot as plt
     if not has_images():
         generate_images()
-    preprocessor = LoadingPreprocessor()
+    preprocessor = Preprocessor(inputs_fn).map(map_fn)
     images = get_batch_data(preprocessor, batch_size=4)
     print(images.shape)
     for image in images:

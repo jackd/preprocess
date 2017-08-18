@@ -1,11 +1,13 @@
 """
 Example of preprocessor that randomly augments MNIST images by rotation.
 
+Uses tf.py_func to augment via standard python function.
+
 Requires cv2.
 """
 import tensorflow as tf
 import cv2
-from preprocess.example.mnist import MnistPreprocessor
+from preprocess.example.mnist import mnist_preprocessor
 
 
 def _rotate_image(image, rotation_deg):
@@ -14,44 +16,23 @@ def _rotate_image(image, rotation_deg):
     return cv2.warpAffine(image, M, (cols, rows))
 
 
-class RotatingPreprocessor(MnistPreprocessor):
-    """MnistPreprocessor that rotates images by a random amount."""
+def get_rotation_fn(max_rotation_deg=15.):
+    if max_rotation_deg == 0:
+        return None
 
-    def __init__(
-            self, dataset, include_indices=False, max_rotation_deg=15.):
-        """
-        Initialize with images and labels from a dataset and noise prop.
+    def rotate(inputs):
+        image, labels = inputs
+        d = tf.random_uniform(
+            shape=(), minval=-max_rotation_deg, maxval=max_rotation_deg,
+            dtype=tf.float32, name='rotation')
+        shape = image.shape
+        image = tf.py_func(
+            _rotate_image, [image, d], tf.float32, stateful=False,
+            name='rotated_image')
+        image.set_shape(shape)
+        return image, labels
 
-        Inputs:
-            dataset: mnist dataset, with images and labels property
-            include_indices: whether or not to include example indices. See
-                `inputs` / `preprocess_single_inputs` for details.
-            max_rotation_deg: maximum value or rotation for data augmentation.
-
-        Raises:
-            ValueError is noise_prop not in [0, 1].
-        """
-        self._max_rotation_degrees = float(max_rotation_deg)
-        super(RotatingPreprocessor, self).__init__(
-            dataset, include_indices=include_indices)
-
-    def preprocess_single_image(self, image):
-        """
-        Randomly sets pixel values to zero based on `max_rotation_deg`.
-
-        `max_rotation_deg` set in constructor.
-        """
-        m = self._max_rotation_degrees
-        if m > 0:
-            d = tf.random_uniform(
-                shape=(), minval=-m, maxval=m, dtype=tf.float32,
-                name='rotation')
-            shape = image.shape
-            image = tf.py_func(
-                _rotate_image, [image, d], tf.float32, stateful=False,
-                name='rotated_image')
-            image.set_shape(shape)
-        return image
+    return rotate
 
 
 if __name__ == '__main__':
@@ -69,12 +50,10 @@ if __name__ == '__main__':
             plt.show()
 
     vis_preprocessor(
-        RotatingPreprocessor(
-            'train', include_indices=False, max_rotation_deg=15.),
-        'training dropped (0.5)',
+        mnist_preprocessor('train').map(get_rotation_fn(45.)),
+        'training rotated(45.)',
         shuffle=True)
     vis_preprocessor(
-        RotatingPreprocessor(
-            'validation', include_indices=False, max_rotation_deg=0.0),
-        'validation dropped (0.0)',
+        mnist_preprocessor('validation').map(get_rotation_fn(0)),
+        'validation rotated (0.0)',
         shuffle=False)

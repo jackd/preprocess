@@ -13,7 +13,7 @@ from preprocessor import Preprocessor
 #         for k in sequence:
 #             return _sequence_length(sequence[k])
 #     else:
-#         raise Exception(
+#         raise ValueError(
 #             'Cannot get length of sequence of type %s' % type(sequence))
 #
 #

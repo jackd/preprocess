@@ -60,53 +60,24 @@ def _get_dataset(dataset):
     return d
 
 
-class MnistPreprocessor(Preprocessor):
-    """Preprocessor implementation for Mnist data."""
+def _mnist_inputs_fn(dataset):
+    d = _get_dataset(dataset)
+    images = np.reshape(d.images, (-1, 28, 28))
+    labels = d.labels
+    if len(images) != len(labels):
+        raise ValueError('images and labels must be the same length.')
+    images = ops.convert_to_tensor(
+        images, dtype=tf.float32, name='images')
+    labels = ops.convert_to_tensor(
+        labels, dtype=tf.int32, name='labels')
+    return images, labels
 
-    def __init__(self, dataset):
-        """
-        Initialize with Mnist dataset.
 
-        Inputs:
-            dataset: mnist dataset, with images and labels property
+def mnist_preprocessor(dataset):
+    def inputs_fn():
+        return _mnist_inputs_fn(dataset)
 
-        Raises:
-            ValueError: if len(dataset.images) != len(dataset.labels)
-        """
-        d = _get_dataset(dataset)
-        self._images = np.reshape(d.images, (-1, 28, 28))
-        self._labels = d.labels
-        if len(self._images) != len(self._labels):
-            raise ValueError('images and labels must be the same length.')
-
-    def inputs(self):
-        """
-        Create (indices), images, labels inputs.
-
-        Returns `indices, images, labels` if `include_indices == True` in
-        the constructor, else just returns `images, labels`.
-        """
-        images = ops.convert_to_tensor(
-            self._images, dtype=tf.float32, name='images')
-        labels = ops.convert_to_tensor(
-            self._labels, dtype=tf.int32, name='labels')
-        return images, labels
-
-    def preprocess_single_image(self, image):
-        """Preprocessing function for a single image. Defaults to identity."""
-        return image
-
-    def preprocess_single_inputs(self, single_inputs):
-        """
-        Preprocess single inputs by randomly corrupting images.
-
-        if include_indices is true (from constructor), returns
-            index, image, label
-        else just returns
-            image, label
-        """
-        single_inputs[0] = self.preprocess_single_image(single_inputs[0])
-        return single_inputs
+    return Preprocessor(inputs_fn)
 
 
 if __name__ == '__main__':
@@ -124,6 +95,6 @@ if __name__ == '__main__':
             plt.show()
 
     vis_preprocessor(
-        MnistPreprocessor(MnistDataset.TRAIN),
+        mnist_preprocessor(MnistDataset.TRAIN),
         'training normal',
         shuffle=True)

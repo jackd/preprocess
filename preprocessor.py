@@ -4,37 +4,35 @@ import tensorflow as tf
 
 class Preprocessor(object):
     """
-    Base class for preprocessing inputs for tensorflow queues.
+    Class for preprocessing inputs for tensorflow queues.
 
-    Derived classes must implement:
-        inputs(self)
-
-    Derived classes may implement:
-        preprocess_single_inputs(self, single_inputs)
-        preprocess_batch_inputs(self, batch_inputs)
-
-    (default implementation is identity)
+    The inputs_fn passed to the constructor should return an identifier for
+    each example in the dataset. For small datasets, this could be the actual
+    dataset, e.g. for Mnist, inputs_fn could return [images, labels]. For
+    datasets that are too big to fit in memory, an id could be used, e.g. for
+    imagenet, inputs_fn could return a filenames tensor, assuming the class
+    can be inferred from this.
 
     Primary use function is get_preprocessed_batch, which executes:
-        get all examples (inputs) ->
-        slice (single_inputs) ->
-        preprocess single inputs (preprocessed_single_inputs) ->
-        batch (batch_inputs)
+        1. get all examples (inputs) ->
+        2. slice (single_inputs) ->
+        3. apply per-example preprocessing (default nothing) ->
+        4. batch (batch_inputs)
 
     Example usage:
-    Using `tf.contrib.learn.Estimator`:
+    Using `tf.estimator.Estimator`:
     ```
     estimator = get_estimator()
-    processor = DerivedPreprocessor()
+    processor = get_preprocessor()
     batch_size = 128
     max_steps = 10000
 
-    def fit_input_fn():
+    def train_input_fn():
         feature0, feature1, labels = preprocessor.get_preprocessed_batch(
             batch_size=batch_size, num_threads=8, shuffle=True)
         return (feature0, feature1), labels
 
-    esimator.fit(input_fn=fit_input_fn, max_steps=max_steps)
+    esimator.train(input_fn=fit_input_fn, max_steps=max_steps)
 
     def evaluate_input_fn():
         feature0, feature1, labels = preprocessor.get_preprocessed_batch(
@@ -44,12 +42,12 @@ class Preprocessor(object):
     estimator.evaluate(input_fn=input_fn)
     ```
 
-    Without `tf.contrib.learn.Estimator`s:
+    Without `tf.estimator.Estimator`s:
     ```
     processor = DerivedPreprocessor()
     graph = tf.Graph()
     with graph.as_default():
-        feature0, feature1, labels = get_preprocessed_batch(
+        feature0, feature1, labels = preprocessor.get_preprocessed_batch(
             batch_size=128, num_threads=8, shuffle=True)
         inference = get_inference(feature0, feature1)
         loss = get_loss(inference, labels)
@@ -72,7 +70,7 @@ class Preprocessor(object):
     ```
     """
 
-    def inputs(self):
+    def __init__(self, inputs_fn):
         """
         Build tensors for start of preprocessing pipeline.
 
@@ -96,7 +94,15 @@ class Preprocessor(object):
         return image_paths_tf, labels_tf
         ```
         """
-        raise NotImplementedError()
+        self._inputs_fn = inputs_fn
+
+    def inputs(self):
+        """
+        Build input tensors.
+
+        Default implementation redirects to inputs_fn passed to constructor.
+        """
+        return self._inputs_fn()
 
     def single_inputs(self, inputs, num_epochs=None, shuffle=True):
         """
@@ -127,34 +133,6 @@ class Preprocessor(object):
         else:
             raise TypeError('inputs must be a tf.tensor, dict, list or tuple')
 
-    def preprocess_single_inputs(self, single_inputs):
-        """
-        Preprocessing funcion applied to single examples.
-
-        Args:
-            single_inputs: list/tuple of inputs representing a single example.
-        Returns:
-            list/tuple of processed tensors representing a single example.
-
-        Defaults to identity.
-
-        Example usage:
-            Given single_inputs (image_names, labels), where:
-                image_name: tf.string tensor of image jpg names corresponding
-                    to jpg files in `image_folder/image_name`
-                label: tf.uint8 tensor of labels
-            ```
-            image_name, label = single_inputs
-            image_folder = tf.constant(
-                'image_folder/', dtype=tf.string, name='image_folder')
-            image_data = tf.read(image_folder + image_name, name='image_data')
-            image = tf.image.decode_jpeg(image_data, channels=3)
-            image = some_tf_preprocessing_func(image)
-            return image, label
-            ```
-        """
-        return single_inputs
-
     def batch_inputs(
             self, single_inputs, batch_size, num_threads=1,
             allow_smaller_final_batch=False):
@@ -165,6 +143,15 @@ class Preprocessor(object):
             single_inputs, batch_size=batch_size, num_threads=num_threads,
             allow_smaller_final_batch=allow_smaller_final_batch)
 
+    def preprocess_single_inputs(self, single_inputs):
+        """
+        Apply optional preprocessing to a single example case.
+
+        Default implementation does nothing, though allows for each overriding.
+        Alternatively, use `map` function.
+        """
+        return single_inputs
+
     def get_preprocessed_batch(
             self, batch_size, num_epochs=None, shuffle=False, num_threads=8,
             allow_smaller_final_batch=False):
@@ -174,7 +161,7 @@ class Preprocessor(object):
         Wraps:
             inputs,
             single_inputs,
-            preprocessed_single_inputs,
+            preprocess_single_inputs,
             batch_inputs
         """
         inputs = self.inputs()
@@ -185,6 +172,23 @@ class Preprocessor(object):
             single_inputs, batch_size=batch_size, num_threads=num_threads,
             allow_smaller_final_batch=allow_smaller_final_batch)
         return batch
+
+    def map(self, map_fn):
+        """
+        Create a MappedPreprocessor using self as base.
+
+        Returns self is map_fn is None.
+        """
+        if map_fn is None:
+            return self
+        else:
+            return MappedPreprocessor(self, map_fn)
+
+    def __str__(self):
+        return 'Preprocessor'
+
+    def __repr__(self):
+        return self.__str__()
 
 
 def get_batch_data(preprocessor, batch_size=4, shuffle=False, num_threads=4,
@@ -233,3 +237,33 @@ def get_batch_data(preprocessor, batch_size=4, shuffle=False, num_threads=4,
         coord.request_stop()
         coord.join(threads)
     return batch_data
+
+
+class MappedPreprocessor(Preprocessor):
+    """A class representing the per-example mapping of a preprocessor."""
+
+    def __init__(self, base_preprocessor, map_fn):
+        if (map_fn is None):
+            raise ValueError('map_fn cannot be None')
+        self._base = base_preprocessor
+        self._map_fn = map_fn
+
+    def inputs(self):
+        """Redirect to base preprocessor."""
+        return self._base.inputs()
+
+    def preprocess_single_inputs(self, *args, **kwargs):
+        """
+        Preprocessing function operating on individual example tensors.
+
+        Applies the map_fn supplied in the constructor to the output of the
+        base preprocessor's preprocess_single_inputs function.
+        """
+        return self._map_fn(
+            self._base.preprocess_single_inputs(*args, **kwargs))
+
+    def __str__(self):
+        return 'Mapped:%s' % self._base
+
+    def __repr__(self):
+        return self.__str__()
